@@ -14,16 +14,21 @@ import dgl.nn as dglnn
 class LinkPredictor(th.nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, num_layers, dropout):
         super(LinkPredictor, self).__init__()
-
+        # Append different modulList 
+        # th.nn.Linear(in_channels, hidden_channels) ? ? first layer
         self.lins = th.nn.ModuleList()
         self.lins.append(th.nn.Linear(in_channels, hidden_channels))
+        # middle layers
+        # Eg: [2, 100] [100, 2]
         for _ in range(num_layers - 2):
-            self.lins.append(th.nn.Linear(hidden_channels, hidden_channels))
+            self.lins.append(th.nn.Linear(hidden_channels, hidden_channels)) 
+        # last layers
         self.lins.append(th.nn.Linear(hidden_channels, out_channels))
-
+        # all Linear layers
         self.dropout = dropout
         self.reset_parameters()
-
+        
+    # backward 
     def reset_parameters(self):
         for lin in self.lins:
             lin.reset_parameters()
@@ -43,7 +48,6 @@ class RGCN(nn.Module):
     def __init__(self, in_feats, hid_feats, out_feats, rel_names, dropout=0.2):
         super().__init__()
         self.dropout = dropout
-
         self.conv1 = dglnn.HeteroGraphConv({
             rel[1]: dglnn.GraphConv(in_feats[rel[0]], hid_feats)
             for rel in rel_names}, aggregate='sum')
