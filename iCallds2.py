@@ -1,4 +1,4 @@
-
+# data initialization and get data from direction
 
 import os, sys, dgl, pickle, random
 import torch as th
@@ -6,11 +6,10 @@ import torch as th
 from dgl.data import DGLDataset
 
 
-
 class iCallds2(DGLDataset):
     directory = 'E:\\iCallasm50' #"E:\\iCallds"
-    numgraph = 6431
-    revedge = True
+    numgraph = 6431 
+    revedge = True 
     calledges = True
     laplacian_pe = False
     adddata = True

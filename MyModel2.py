@@ -116,6 +116,7 @@ def init_dataset(Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = 
 
 device = None
 
+# 
 def get_one_graph_bak(dataset, i, Adddata = True, Addfunc = True, Laplacian_pe=False):
     g, glabels = dataset[i]
     g = g.to(device)
@@ -145,7 +146,7 @@ def get_one_graph_bak(dataset, i, Adddata = True, Addfunc = True, Laplacian_pe=F
                 'code': g.nodes['code'].data['feat'].view(g.nodes['code'].data['feat'].shape[0], -1).float()}
 
     return g, glabels, node_features
-
+#
 def get_one_graph(dataset, i, Adddata = True, Addfunc = True, Laplacian_pe=False):
     g, glabels = dataset[i]
     g = g.to(device)
@@ -166,6 +167,8 @@ def get_one_graph(dataset, i, Adddata = True, Addfunc = True, Laplacian_pe=False
 
     return g, glabels, node_features
 skips = []
+
+#
 def exp_all(epochs = 6, hidden_features = 128, savePATH = 'E:\\iCallasm\\all', Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False):
     dataset, rel_names = init_dataset(Revedges=Revedges, Adddata=Adddata, Addfunc=Addfunc, DataRefedgs = DataRefedgs, Calledges = Calledges, CodeRefedgs = CodeRefedgs, Laplacian_pe=Laplacian_pe)
     pe = 0
