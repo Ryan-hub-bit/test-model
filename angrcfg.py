@@ -29,7 +29,7 @@ datanodeid = 0
 funcnodeid = 0
 addr_min = 0xffffffff
 addr_max = 0
-Ninst_addrs = 50
+Ninst_addrs = 50 # 70 80 ? 
 g_list = []
 asmdict = {}
 naming = 0
@@ -339,7 +339,8 @@ for accounts in os.listdir(directory):
                             if nodelookup[v] is not None:
                                 node1 = nodelookup[v]
                                 funcsave[v] = node1.id
-
+                        # node 有序号  23 
+                        # code func 的节点不是global unique的
                         graph_data = {
                             ('code', 'code2func_edges', 'func'): code2func_edges,
 

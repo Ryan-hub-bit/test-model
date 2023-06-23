@@ -11,6 +11,7 @@ import iCallds2, random
 
 import dgl.nn as dglnn
 
+# GN 后边接的模型 最后得到概率 两个节点节点之间是否存在indirect contronl flow的概率预测
 class LinkPredictor(th.nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, num_layers, dropout):
         super(LinkPredictor, self).__init__()
@@ -43,11 +44,17 @@ class LinkPredictor(th.nn.Module):
         return th.sigmoid(x)
 
 
-
+# node is the output of palmtree and other features(vector)
+# one of GN relationational for same node and same link
 class RGCN(nn.Module):
     def __init__(self, in_feats, hid_feats, out_feats, rel_names, dropout=0.2):
         super().__init__()
         self.dropout = dropout
+        # 异构图 同构图
+        # 不能把神经网络变深 GN如何实现 图神经网络输入的形状是不确定的 传统的神经网络输入输出都是确定的
+        # 每一个节点 有多少个领结节点是不确定的 图神经网络的卷积是求的领结节点的平均值message passing
+        # GN层数无法做深？ 
+        # rel: relation
         self.conv1 = dglnn.HeteroGraphConv({
             rel[1]: dglnn.GraphConv(in_feats[rel[0]], hid_feats)
             for rel in rel_names}, aggregate='sum')
@@ -83,6 +90,7 @@ def init_dataset(Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = 
     dataset = iCallds2.iCallds2(Revedges=Revedges, Calledges=Calledges, Laplacian_pe=Laplacian_pe,
                  Adddata = Adddata, Addfunc = Addfunc, DataRefedgs = DataRefedgs, CodeRefedgs = CodeRefedgs)
 
+    # rev -> reverse 
     rel_names = [('code', 'code2func_edges', 'func'),
                  ('code', 'code2code_edges', 'code'),
                  ('code', 'codecall_edges', 'code'),
@@ -116,7 +124,7 @@ def init_dataset(Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = 
 
 device = None
 
-# 
+# backup
 def get_one_graph_bak(dataset, i, Adddata = True, Addfunc = True, Laplacian_pe=False):
     g, glabels = dataset[i]
     g = g.to(device)
@@ -146,7 +154,8 @@ def get_one_graph_bak(dataset, i, Adddata = True, Addfunc = True, Laplacian_pe=F
                 'code': g.nodes['code'].data['feat'].view(g.nodes['code'].data['feat'].shape[0], -1).float()}
 
     return g, glabels, node_features
-#
+
+# icallds2
 def get_one_graph(dataset, i, Adddata = True, Addfunc = True, Laplacian_pe=False):
     g, glabels = dataset[i]
     g = g.to(device)
@@ -168,7 +177,7 @@ def get_one_graph(dataset, i, Adddata = True, Addfunc = True, Laplacian_pe=False
     return g, glabels, node_features
 skips = []
 
-#
+# 处理开关
 def exp_all(epochs = 6, hidden_features = 128, savePATH = 'E:\\iCallasm\\all', Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False):
     dataset, rel_names = init_dataset(Revedges=Revedges, Adddata=Adddata, Addfunc=Addfunc, DataRefedgs = DataRefedgs, Calledges = Calledges, CodeRefedgs = CodeRefedgs, Laplacian_pe=Laplacian_pe)
     pe = 0
@@ -179,10 +188,11 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = 'E:\\iCallasm\\all', R
         in_features.pop('data')
     if not Addfunc:
         in_features.pop('func')
-
+    # GN and linkpredictor model
     model = Model(in_features, hidden_features, hidden_features, rel_names, dropout = 0.2)
     predictor = LinkPredictor(hidden_features*2, hidden_features, 1, 3, 0)
     model, predictor = map(lambda x: x.to(device), (model, predictor))
+    # 优化器
     opt = th.optim.Adam(model.parameters())
     model.float()
     predictor.float()
@@ -191,9 +201,11 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = 'E:\\iCallasm\\all', R
     precision = []
     recall = []
     auroc = []
+    # model 保存模型
     if os.path.exists(os.path.join(savePATH, 'predictor.checkpoint')):
         model.load_state_dict(th.load(os.path.join(savePATH, 'model.checkpoint')))
         predictor.load_state_dict(th.load(os.path.join(savePATH, 'predictor.checkpoint')))
+        # 存模型跑出来的最优结果 
         with open(os.path.join(savePATH, 'bestf1.txt'), 'r') as f:
             bestf1 = float(f.read())
         with open(os.path.join(savePATH, 'f1s.txt'), 'r') as f:
@@ -205,16 +217,15 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = 'E:\\iCallasm\\all', R
                 precision.append(float(i[1]))
                 recall.append(float(i[2]))
                 auroc.append(float(i[3]))
-
-
-
     model.train()
     predictor.train()
     timep = []
     timep.append(time.time())
+
     trains = [0, int(dataset.__len__()*0.8)]
     valids = [int(dataset.__len__()*0.8), int(dataset.__len__()*0.9)]
     tests = [int(dataset.__len__()*0.9), dataset.__len__()]
+
     metric = torchmetrics.F1Score()
     num = 0
     #smallPE = True
@@ -228,31 +239,30 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = 'E:\\iCallasm\\all', R
         print(f'data num = {tmp}')
         validlist = randomlist[int(tmp*0.9):tmp]
         randomlist = randomlist[:int(tmp*0.9)]
-
     else:
         randomlist = list(range(trains[1]))
         for i in skips:
             if i in randomlist:
                 randomlist.remove(i)
         validlist = list(range(valids[0], valids[1]))
+    
+    # 迭代次数的循环 测试epoch这么多次数
     for epoch in range(epochs):
         random.shuffle(randomlist)
         for i in range(len(randomlist)):
             num += 1
             g, glabels, node_features = get_one_graph(dataset=dataset, i=randomlist[i], Adddata = Adddata, Addfunc = Addfunc, Laplacian_pe=Laplacian_pe)
             pred = model(g, node_features)
-
             edge = glabels['GT_edges']
             pos_out = predictor(th.cat((pred['code'][edge[0]],pred['code'][edge[1]]),dim=1))#(pred['code'][edge[0]], pred['code'][edge[1]])
             pos_loss = -th.log(pos_out + 1e-15).mean()
-
             edge = glabels['GT_F_edges']
             neg_out = predictor(th.cat((pred['code'][edge[0]],pred['code'][edge[1]]),dim=1))#(pred['code'][edge[0]], pred['code'][edge[1]])
             neg_loss = -th.log(1 - neg_out + 1e-15).mean()
-
             loss = pos_loss + neg_loss
-
+            # learning rate 自动设置learning rate
             opt.zero_grad()
+            # backward
             loss.backward()
             opt.step()
             timep.append(time.time())
@@ -267,6 +277,8 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = 'E:\\iCallasm\\all', R
             neg_out = None
             neg_loss = None
             loss = None
+
+            # 每学习了3000次 做一次evaluation
             if num%3000 == 0:
                 preds = []
                 targets = []
@@ -278,8 +290,9 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = 'E:\\iCallasm\\all', R
                         continue
                     g, glabels, node_features = get_one_graph(dataset=dataset, i=i, Adddata = Adddata, Addfunc = Addfunc, Laplacian_pe=Laplacian_pe)
                     pred = model(g, node_features)
-
-                    edge = glabels['GT_edges']
+                    edge = glabels['GT_edges'] # eg: 12 代表12之间存在一个indrect call 是一个list
+                    # 真值有两部分， 哪两种节点是存在indirect flow  哪两种节点是不存在indirect flow
+                    # call linkpredictor 
                     pos_out = predictor(th.cat((pred['code'][edge[0]], pred['code'][edge[1]]),
                                                dim=1))
                     edge = glabels['GT_F_edges']
@@ -289,7 +302,6 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = 'E:\\iCallasm\\all', R
                     preds+=neg_out.tolist()
                     targets+=[[1]]*pos_out.shape[0]
                     targets+=[[0]]*neg_out.shape[0]
-
                 f1.append(metric(th.tensor(preds), th.tensor(targets)).item())
                 precision_recall = torchmetrics.functional.precision_recall(th.tensor(preds), th.tensor(targets))
                 auroc.append(torchmetrics.functional.auroc(th.tensor(preds), th.tensor(targets)).item())
@@ -304,14 +316,13 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = 'E:\\iCallasm\\all', R
                 with open(os.path.join(savePATH, 'f1s.txt'), 'w') as f:
                     for i in range(len(f1)):
                         f.write(str(f1[i])+' '+str(precision[i])+' '+str(recall[i])+' '+str(auroc[i])+' '+'\n')
-
-
                 print(f"Test time: {time.time()-timetest:.2f} F1: {f1[-1]:.4f} BestF1: {bestf1:.4f}")
                 model.train()
                 predictor.train()
 
 if __name__ == "__main__":
     epochs = 10
+    # 图过于大 
     skips = [517, 3002, 2260, 2263, 2267, 2264, 2508, 2348, 3732,
              5361, 5400, 1462, 5952, 2330, 608, 5803, 2603, 2971, 6060, 6062, 2876,
              4573, 5956, 2819, 5958, 4580, 4574, 4579, 4587, 3946, 2172, 5281, 3575, 3576, 3061, 5963, 5960, 1152, 1155,
