@@ -157,6 +157,7 @@ def get_one_graph_bak(dataset, i, Adddata = True, Addfunc = True, Laplacian_pe=F
 
 # icallds2
 def get_one_graph(dataset, i, Adddata = True, Addfunc = True, Laplacian_pe=False):
+    print(f"graph{i} is loading")
     g, glabels = dataset[i]
     g = g.to(device)
     if Adddata:
@@ -178,7 +179,7 @@ def get_one_graph(dataset, i, Adddata = True, Addfunc = True, Laplacian_pe=False
 skips = []
 
 # 处理开关
-def exp_all(epochs = 6, hidden_features = 128, savePATH = 'E:\\iCallasm\\all', Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False):
+def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/Documents/myModel/result/all', Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False):
     dataset, rel_names = init_dataset(Revedges=Revedges, Adddata=Adddata, Addfunc=Addfunc, DataRefedgs = DataRefedgs, Calledges = Calledges, CodeRefedgs = CodeRefedgs, Laplacian_pe=Laplacian_pe)
     pe = 0
     if Laplacian_pe:
@@ -226,13 +227,16 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = 'E:\\iCallasm\\all', R
     valids = [int(dataset.__len__()*0.8), int(dataset.__len__()*0.9)]
     tests = [int(dataset.__len__()*0.9), dataset.__len__()]
 
-    metric = torchmetrics.F1Score()
+    metric = torchmetrics.F1Score(task="binary")
     num = 0
     #smallPE = True
     if Laplacian_pe:
         randomlist = []
-        for i in range(dataset.__len__()):
-            graphfile = os.path.join(dataset.directory, str(i) + '.graphpe')
+        # for i in range(dataset.__len__()):
+        for i in range(945,999):
+            if i == 972 or i == 964:
+                continue
+            graphfile = os.path.join(dataset.directory, str(945) + '.graphpe')
             if os.path.exists(graphfile) or os.path.getsize(graphfile[:-2])<70000000:
                 randomlist.append(i)
         tmp = randomlist.__len__()
@@ -331,12 +335,12 @@ if __name__ == "__main__":
              ]
     hidden_features = 512
     device = th.device("cuda" if th.cuda.is_available() else "cpu")
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\allpe',
+    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/Documents/myModel/result/allpe',
             Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=True)
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\alloff',
-            Revedges = False, Adddata = False, Addfunc = False, DataRefedgs = False, Calledges = False, CodeRefedgs = False, Laplacian_pe=False)
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\allafter',
-            Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False)
+    # exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/Documents/myModel/result/alloff',
+    #         Revedges = False, Adddata = False, Addfunc = False, DataRefedgs = False, Calledges = False, CodeRefedgs = False, Laplacian_pe=False)
+    # exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/Documents/myModel/result/allafter',
+    #         Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False)
 '''
     exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\allnocall',
             Revedges = True, Adddata = True, Addfunc = False, DataRefedgs = True, Calledges = False, CodeRefedgs = True)
