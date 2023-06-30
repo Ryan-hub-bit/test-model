@@ -283,7 +283,7 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/Documents/
             loss = None
 
             # 每学习了3000次 做一次evaluation
-            if num%3000 == 0:
+            if num%50 == 0:
                 preds = []
                 targets = []
                 model.eval()
@@ -334,6 +334,7 @@ if __name__ == "__main__":
              5151,
              ]
     hidden_features = 512
+
     device = th.device("cuda" if th.cuda.is_available() else "cpu")
     exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/Documents/myModel/result/allpe',
             Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=True)
