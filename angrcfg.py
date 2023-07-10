@@ -29,7 +29,7 @@ datanodeid = 0
 funcnodeid = 0
 addr_min = 0xffffffff
 addr_max = 0
-Ninst_addrs = 50 # 70 80 ? 
+Ninst_addrs = 50 # 70 80 ? #basic blcok  first nth instruction (vectors)
 g_list = []
 asmdict = {}
 naming = 0
@@ -373,8 +373,11 @@ for accounts in os.listdir(directory):
                                     addr_max - addr_min) * (new_max - new_min) + new_min)
                             o.embeddings = th.tensor(numpy.array(list(o.embeddings)+[[0]*128]*(Ninst_addrs - len(o.embeddings)))).view(-1)
                             o.embeddings = th.cat((o.addr.view(1), o.func_addr.view(1), o.embeddings)).float()
+                            # TODO add one vector here
                             o.avg = th.from_numpy(o.avg)
                             o.avg = th.cat((o.addr.view(1), o.func_addr.view(1), o.avg)).float()
+                            # test next line
+                            #o.embeddings = th.cat(o.embeddings, o.avg).float()
 
                         for o in datanodes:
                             o.addr = th.tensor((o.addr - addr_min) / (
@@ -387,7 +390,7 @@ for accounts in os.listdir(directory):
                             #g.nodes['code'].data['inst_addrs'] = th.tensor(numpy.array([list(o.inst_addrs)+[0]*(Ninst_addrs - len(o.inst_addrs)) for o in codenodes]))
                             g.nodes['code'].data['embeddings'] = th.tensor(numpy.array([list(o.embeddings)+[[0]*128]*(Ninst_addrs - len(o.embeddings)) for o in codenodes]))
                             g.nodes['code'].data['mean'] = th.tensor(o.avg for o in codenodes)'''
-                            g.nodes['code'].data['feat'] = th.stack(([o.embeddings for o in codenodes]))
+                            g.nodes['code'].data['feat'] = th.stack(([o.embeddings for o in codenodes])) # TODO featuremean 128 bit array one vector
                             g.nodes['code'].data['featmean'] = th.stack(([o.avg for o in codenodes]))
                             #g32 = dgl.graph(edges, idtype=th.int32)
                         if len(datanodes) > 0:
