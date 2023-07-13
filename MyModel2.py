@@ -253,6 +253,7 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/Documents/
     # 迭代次数的循环 测试epoch这么多次数
     for epoch in range(epochs):
         random.shuffle(randomlist)
+        print(randomlist)
         for i in range(len(randomlist)):
             num += 1
             g, glabels, node_features = get_one_graph(dataset=dataset, i=randomlist[i], Adddata = Adddata, Addfunc = Addfunc, Laplacian_pe=Laplacian_pe)
@@ -283,7 +284,7 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/Documents/
             loss = None
 
             # 每学习了3000次 做一次evaluation
-            if num%3000 == 0:
+            if num%50 == 0:
                 preds = []
                 targets = []
                 model.eval()
@@ -334,13 +335,14 @@ if __name__ == "__main__":
              5151,
              ]
     hidden_features = 512
+
     device = th.device("cuda" if th.cuda.is_available() else "cpu")
     exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/Documents/myModel/result/allpe',
             Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=True)
-    # exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/Documents/myModel/result/alloff',
-    #         Revedges = False, Adddata = False, Addfunc = False, DataRefedgs = False, Calledges = False, CodeRefedgs = False, Laplacian_pe=False)
-    # exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/Documents/myModel/result/allafter',
-    #         Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False)
+    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/Documents/myModel/result/alloff',
+            Revedges = False, Adddata = False, Addfunc = False, DataRefedgs = False, Calledges = False, CodeRefedgs = False, Laplacian_pe=False)
+    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/Documents/myModel/result/allafter',
+            Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False)
 '''
     exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\allnocall',
             Revedges = True, Adddata = True, Addfunc = False, DataRefedgs = True, Calledges = False, CodeRefedgs = True)
