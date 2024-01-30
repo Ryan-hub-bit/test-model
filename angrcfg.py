@@ -260,74 +260,111 @@ for accounts in os.listdir(directory):
                             else:
                                 funcnode = funcnodelookup[node.func_addr]
                             code2func_edges.append((node.id, funcnode.id))
+                        # ---------------------------------------------------------
+                        binaryName = binaries.split(".")[0].split(".")
+                        def  getCallsiteAddress(callKey):
+                            callsiteFile = os.path.join(project, binaryName +"txt")
+                            if not os.path.exists(callsiteFile):
+                                print(f"Err: {callsiteFile} not in {project}")
+                            with open(callsiteFile, 'r') as f:
+                                callsites =f.readlines()
+                            addressFile = os.path.join(project, "address.txt")
+                            if not os.path.exists(addressFile):
+                                print(f"Err: {addressFile} not in {project}")
+                            with open(addressFile,'r') as f:
+                                addresses = f.readlines()
+                            addressIndex = callsites.index(callKey)
+                            callsiteAddress = addresses[addressIndex]
+                            return callsiteAddress
+                        
+                        # Step 4: GT
+                        for call_dict in tdict['tg_targets']:
+                            for callKey in call_dict:
+                                callsite_address = getCallsiteAddress(callKey)
+                                if callsite_address not in nodelookup:
+                                    print("Err: no callsite in nodelookup")
+                                    print(callsite)
+                                callsite = nodelookup[callsite_address]
+                                if callsite not in nodelookup:
+                                    print(f"Err{callsite} not in nodelookup")
+                                for calltarget in tdict['tg_targets'][callsite]:
+                                    if calltarget not in funclookup:
+                                        print("Err:no func in callee")
+                                        print(calltarget)
+                                        continue
+                                    callee = funclookup[calltarget]
+                                    newedge = (callsite.id, callee.id)
+                                    GT_edges.append(newedge)
 
                         # Step 4: GT
-                        funcnamei = {}
-                        for calllist in tdict['tg_targets']:
-                            indexn = calllist.find(' in internal ')
-                            if indexn == -1:
-                                indexn = calllist.find(' in ')
-                                funcname0 = calllist[indexn + 4:]
-                            else:
-                                funcname0 = calllist[indexn + 13:]
-                            norder = int(calllist[8:indexn])
-                            indexn = funcname0.find('@')
-                            if indexn != -1:
-                                funcname0 = funcname0[:indexn]
-
-                            if funcname0 not in funclookup:
-                                print("ERR: no func in calllist")
-                                print(funcname0)
-                            funcname0 = funclookup[funcname0]
-                            if funcname0 not in icalllookup:
-                                print("ERR: no icall in calllist")
-                                print(funcname0)
-                                continue
-                            funcnamelist = icalllookup[funcname0]
-
-                            #order?
-                            if funcname0 not in funcnamei:
-                                funcnamei[funcname0] = 0
-                                norderres = 0
-                            else:
-                                funcnamei[funcname0] += 1
-                                norderres = funcnamei[funcname0]
-
-
-                            l=list(funcnamelist.items())
-                            if norderres >= l.__len__():
-                                print("ERR: skipped norder ", calllist)
-                                continue
-                            l.sort()
-                            block_addr = l[norderres][1]
-                            node0 = nodelookup[block_addr]
-
-                            fcalllist = []
-
-                            for calltarget in tdict['tg_targets'][calllist]:
-                                if calltarget not in funclookup:
-                                    print("ERR: no func in calltarget")
-                                    print(calltarget)
-                                    continue
-                                target_addr = funclookup[calltarget]
-                                if target_addr is None:
-                                    continue
-                                node1 = nodelookup[target_addr]
-                                newedge = (node0.id, node1.id)
-                                GT_edges.append(newedge)
-
-                                funcaddrs = list(funclookup.values())
-                                r = random.choice(funcaddrs)
-                                maxtry = 0
-                                while True:
-                                    if maxtry<20:
-                                        break
-                                    elif r in calltarget or r in fcalllist:
-                                        r = random.choice(funcaddrs)
-                                        maxtry+=1
-                                    else:
-                                        fcalllist.append(r)
-                                        break
+#                        funcnamei = {}
+#                        for calllist in tdict['tg_targets']:
+#                            indexn = calllist.find(' in internal ')
+#                            if indexn == -1:
+#                                indexn = calllist.find(' in ')
+#                                funcname0 = calllist[indexn + 4:]
+#                            else:
+#                                funcname0 = calllist[indexn + 13:]
+#                            norder = int(calllist[8:indexn])
+#                            indexn = funcname0.find('@')
+#                            if indexn != -1:
+#                                funcname0 = funcname0[:indexn]
+#
+#                            if funcname0 not in funclookup:
+#                                print("ERR: no func in calllist")
+#                                print(funcname0)
+#                            funcname0 = funclookup[funcname0]
+#                            if funcname0 not in icalllookup:
+#                                print("ERR: no icall in calllist")
+#                                print(funcname0)
+#                                continue
+#                            funcnamelist = icalllookup[funcname0]
+#
+#                            #order?
+#                            if funcname0 not in funcnamei:
+#                                funcnamei[funcname0] = 0
+#                                norderres = 0
+#                            else:
+#                                funcnamei[funcname0] += 1
+#                                norderres = funcnamei[funcname0]
+#
+#
+#                            l=list(funcnamelist.items())
+#                            if norderres >= l.__len__():
+#                                print("ERR: skipped norder ", calllist)
+#                                continue
+#                            l.sort()
+#                            block_addr = l[norderres][1]
+#                            node0 = nodelookup[block_addr]
+#
+#                            fcalllist = []
+#
+                                
+#                            for calltarget in tdict['tg_targets'][calllist]:
+#                                if calltarget not in funclookup:
+#                                    print("ERR: no func in calltarget")
+#                                    print(calltarget)
+#                                    continue
+#                                target_addr = funclookup[calltarget]
+#                                if target_addr is None:
+#                                    continue
+#                                node1 = nodelookup[target_addr]
+#                                newedge = (node0.id, node1.id)
+#                                GT_edges.append(newedge)
+#
+#                                funcaddrs = list(funclookup.values())
+#                                r = random.choice(funcaddrs)
+#                                maxtry = 0
+#                                while True:
+#                                    if maxtry<20:
+#                                        break
+#                                    elif r in calltarget or r in fcalllist:
+#                                        r = random.choice(funcaddrs)
+#                                        maxtry+=1
+#                                    else:
+#                                        fcalllist.append(r)
+#                                        break
+#
 
 
                         if len(GT_edges) == 0:
