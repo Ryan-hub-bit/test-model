@@ -6,6 +6,8 @@ import dgl, os
 import torch.nn as nn
 import torch.nn.functional as F
 import torchmetrics
+# from torchmetrics.classification import BinaryRecall
+from torch import tensor
 
 import iCallds2, random
 
@@ -15,21 +17,21 @@ import dgl.nn as dglnn
 class LinkPredictor(th.nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, num_layers, dropout):
         super(LinkPredictor, self).__init__()
-        # Append different modulList 
+        # Append different modulList
         # th.nn.Linear(in_channels, hidden_channels) ? ? first layer
         self.lins = th.nn.ModuleList()
         self.lins.append(th.nn.Linear(in_channels, hidden_channels))
         # middle layers
         # Eg: [2, 100] [100, 2]
         for _ in range(num_layers - 2):
-            self.lins.append(th.nn.Linear(hidden_channels, hidden_channels)) 
+            self.lins.append(th.nn.Linear(hidden_channels, hidden_channels))
         # last layers
         self.lins.append(th.nn.Linear(hidden_channels, out_channels))
         # all Linear layers
         self.dropout = dropout
         self.reset_parameters()
-        
-    # backward 
+
+    # backward
     def reset_parameters(self):
         for lin in self.lins:
             lin.reset_parameters()
@@ -53,7 +55,7 @@ class RGCN(nn.Module):
         # 异构图 同构图
         # 不能把神经网络变深 GN如何实现 图神经网络输入的形状是不确定的 传统的神经网络输入输出都是确定的
         # 每一个节点 有多少个领结节点是不确定的 图神经网络的卷积是求的领结节点的平均值message passing
-        # GN层数无法做深？ 
+        # GN层数无法做深？
         # rel: relation
         self.conv1 = dglnn.HeteroGraphConv({
             rel[1]: dglnn.GraphConv(in_feats[rel[0]], hid_feats)
@@ -90,7 +92,7 @@ def init_dataset(Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = 
     dataset = iCallds2.iCallds2(Revedges=Revedges, Calledges=Calledges, Laplacian_pe=Laplacian_pe,
                  Adddata = Adddata, Addfunc = Addfunc, DataRefedgs = DataRefedgs, CodeRefedgs = CodeRefedgs)
 
-    # rev -> reverse 
+    # rev -> reverse
     rel_names = [('code', 'code2func_edges', 'func'),
                  ('code', 'code2code_edges', 'code'),
                  ('code', 'codecall_edges', 'code'),
@@ -179,12 +181,12 @@ def get_one_graph(dataset, i, Adddata = True, Addfunc = True, Laplacian_pe=False
 skips = []
 
 # 处理开关
-def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/Documents/myModel/result/all', Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False):
+def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/model/result/all', Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False):
     dataset, rel_names = init_dataset(Revedges=Revedges, Adddata=Adddata, Addfunc=Addfunc, DataRefedgs = DataRefedgs, Calledges = Calledges, CodeRefedgs = CodeRefedgs, Laplacian_pe=Laplacian_pe)
     pe = 0
     if Laplacian_pe:
         pe = 2
-    in_features = {'code':50*128+2+pe, 'data': 1+pe, 'func': 1+int(pe/2)}
+    in_features = {'code':70*128+2+pe, 'data': 1+pe, 'func': 1+int(pe/2)}
     if not Adddata:
         in_features.pop('data')
     if not Addfunc:
@@ -206,7 +208,7 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/Documents/
     if os.path.exists(os.path.join(savePATH, 'predictor.checkpoint')):
         model.load_state_dict(th.load(os.path.join(savePATH, 'model.checkpoint')))
         predictor.load_state_dict(th.load(os.path.join(savePATH, 'predictor.checkpoint')))
-        # 存模型跑出来的最优结果 
+        # 存模型跑出来的最优结果
         with open(os.path.join(savePATH, 'bestf1.txt'), 'r') as f:
             bestf1 = float(f.read())
         with open(os.path.join(savePATH, 'f1s.txt'), 'r') as f:
@@ -232,11 +234,11 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/Documents/
     #smallPE = True
     if Laplacian_pe:
         randomlist = []
-        # for i in range(dataset.__len__()):
-        for i in range(945,999):
-            if i == 972 or i == 964:
-                continue
-            graphfile = os.path.join(dataset.directory, str(945) + '.graphpe')
+        for i in range(dataset.__len__()):
+        # for i in range(945,999):
+            # if i == 972 or i == 964:
+            #     continue
+            graphfile = os.path.join(dataset.directory, str(i) + '.graphpe')
             if os.path.exists(graphfile) or os.path.getsize(graphfile[:-2])<70000000:
                 randomlist.append(i)
         tmp = randomlist.__len__()
@@ -249,7 +251,7 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/Documents/
             if i in randomlist:
                 randomlist.remove(i)
         validlist = list(range(valids[0], valids[1]))
-    
+
     # 迭代次数的循环 测试epoch这么多次数
     for epoch in range(epochs):
         random.shuffle(randomlist)
@@ -297,7 +299,7 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/Documents/
                     pred = model(g, node_features)
                     edge = glabels['GT_edges'] # eg: 12 代表12之间存在一个indrect call 是一个list
                     # 真值有两部分， 哪两种节点是存在indirect flow  哪两种节点是不存在indirect flow
-                    # call linkpredictor 
+                    # call linkpredictor
                     pos_out = predictor(th.cat((pred['code'][edge[0]], pred['code'][edge[1]]),
                                                dim=1))
                     edge = glabels['GT_F_edges']
@@ -308,10 +310,14 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/Documents/
                     targets+=[[1]]*pos_out.shape[0]
                     targets+=[[0]]*neg_out.shape[0]
                 f1.append(metric(th.tensor(preds), th.tensor(targets)).item())
-                precision_recall = torchmetrics.functional.precision_recall(th.tensor(preds), th.tensor(targets))
-                auroc.append(torchmetrics.functional.auroc(th.tensor(preds), th.tensor(targets)).item())
-                precision.append(precision_recall[0].item())
-                recall.append(precision_recall[1].item())
+                # precision_recall = torchmetrics.functional.classification.precision_recall(th.tensor(preds), th.tensor(targets))
+                precision_tensor = torchmetrics.functional.precision(th.tensor(preds), th.tensor(targets),"binary")
+                recall_tensor = torchmetrics.functional.recall(th.tensor(preds), th.tensor(targets),"binary")
+                #precision_recall = torchmetrics.functional.precision_recall(th.tensor(preds), th.tensor(targets))
+                # recall = Recall(task="multiclass", average='macro', num_classes=3)
+                auroc.append(torchmetrics.functional.auroc(th.tensor(preds), th.tensor(targets),"binary").item())
+                precision.append(precision_tensor.item())
+                recall.append(recall_tensor.item())
                 if bestf1 <f1[-1]:
                     bestf1 = f1[-1]
                     th.save(model.state_dict(), os.path.join(savePATH, 'model.checkpoint'))
@@ -327,21 +333,21 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/Documents/
 
 if __name__ == "__main__":
     epochs = 10
-    # 图过于大 
-    skips = [517, 3002, 2260, 2263, 2267, 2264, 2508, 2348, 3732,
-             5361, 5400, 1462, 5952, 2330, 608, 5803, 2603, 2971, 6060, 6062, 2876,
-             4573, 5956, 2819, 5958, 4580, 4574, 4579, 4587, 3946, 2172, 5281, 3575, 3576, 3061, 5963, 5960, 1152, 1155,
-             4717, 5988,
-             5151,
-             ]
+    # 图过于大
+    # skips = [517, 3002, 2260, 2263, 2267, 2264, 2508, 2348, 3732,
+    #          5361, 5400, 1462, 5952, 2330, 608, 5803, 2603, 2971, 6060, 6062, 2876,
+    #          4573, 5956, 2819, 5958, 4580, 4574, 4579, 4587, 3946, 2172, 5281, 3575, 3576, 3061, 5963, 5960, 1152, 1155,
+    #          4717, 5988,
+    #          5151,
+    #          ]
     hidden_features = 512
 
     device = th.device("cuda" if th.cuda.is_available() else "cpu")
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/Documents/myModel/result/allpe',
+    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/model/result/allpe',
             Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=True)
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/Documents/myModel/result/alloff',
+    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/model/result/alloff',
             Revedges = False, Adddata = False, Addfunc = False, DataRefedgs = False, Calledges = False, CodeRefedgs = False, Laplacian_pe=False)
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/Documents/myModel/result/allafter',
+    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/model/result/allafter',
             Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False)
 '''
     exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\allnocall',

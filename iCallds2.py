@@ -7,10 +7,10 @@ from dgl.data import DGLDataset
 
 
 class iCallds2(DGLDataset):
-    directory = '/home/isec/Documents/myModel/iCallData' #"E:\\iCallds"
-    numgraph = 180
-    #numgraph = 6431 
-    revedge = True 
+    directory = '/home/isec/Documents/experiment_6/graph_dir_70' #"E:\\iCallds"
+    numgraph = 505
+    #numgraph = 6431
+    revedge = True
     calledges = True
     laplacian_pe = False
     adddata = True
