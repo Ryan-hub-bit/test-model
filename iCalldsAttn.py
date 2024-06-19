@@ -8,8 +8,8 @@ from dgl.data import DGLDataset
 
 class iCallds2(DGLDataset):
     # directory = '/home/isec/Documents/experiment_6/graph_dir_70' #"E:\\iCallds"
-    directory = '/home/isec/Documents/differentopdata/Reorganized_Dataset/O0/graph_dir_70' #"E:\\iCallds"
-    numgraph = 348
+    directory = '/home/isec/Documents/attncall/graph_dir_new' #"E:\\iCallds"
+    numgraph = 389
     #numgraph = 6431
     revedge = True
     calledges = True
@@ -41,6 +41,7 @@ class iCallds2(DGLDataset):
         graphfile = os.path.join(self.directory, str(i)+'.graph')
         glist, glabel = dgl.data.utils.load_graphs(graphfile)
 
+
         funcaddrfile = os.path.join(self.directory, str(i) + '.funcaddr')
         with open(funcaddrfile, 'rb') as fp:
             savefunc = pickle.load(fp)
@@ -64,7 +65,7 @@ class iCallds2(DGLDataset):
                         (pe[nowi:nowi + glist[0].num_nodes(i)], glist[0].nodes[i].data['feat']), dim=1)
                     nowi += glist[0].num_nodes(i)
 
-                #dgl.data.utils.save_graphs(graphfile, glist, glabel)
+                dgl.data.utils.save_graphs(graphfile, glist, glabel)
                 if self.onlySave:
                     return glist, glabel
 
@@ -106,8 +107,8 @@ class iCallds2(DGLDataset):
 
         if not self.calledges:
             tmp = glist[0].edges(etype='codecall_edges')
-            glist[0] = dgl.add_edges(glist[0], tmp[0], tmp[1], etype='code2code_edges')
-            # glist[0] = dgl.remove_edges(glist[0], range(glist[0].num_edges(('code', 'codecall_edges', 'code'))), ('code', 'codecall_edges', 'code'))
+            #glist[0] = dgl.add_edges(glist[0], tmp[0], tmp[1], etype='code2code_edges')
+            glist[0] = dgl.remove_edges(glist[0], range(glist[0].num_edges(('code', 'codecall_edges', 'code'))), ('code', 'codecall_edges', 'code'))
         rel_names = [('code', 'code2func_edges', 'func'),
                      ('code', 'code2code_edges', 'code'),
                      ('code', 'codecall_edges', 'code'),
@@ -124,7 +125,7 @@ class iCallds2(DGLDataset):
             rel_names = [o for o in rel_names if not o[1].endswith('xrefdata_edges')]
         if not  self.codeRefedgs:
             rel_names = [o for o in rel_names if not o[1].endswith('xrefcode_edges')]
-        if not  self.calledges:
+        if not self.calledges:
             rel_names = [o for o in rel_names if not o[1].endswith('codecall_edges')]
         glist[0] = glist[0].edge_type_subgraph(rel_names)
         if self.adddata:

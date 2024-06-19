@@ -8,8 +8,8 @@ from dgl.data import DGLDataset
 
 class iCallds2(DGLDataset):
     # directory = '/home/isec/Documents/experiment_6/graph_dir_70' #"E:\\iCallds"
-    directory = '/home/isec/Documents/differentopdata/Reorganized_Dataset/O0/graph_dir_70' #"E:\\iCallds"
-    numgraph = 348
+    directory = '/home/isec/Documents/differentopdata/Reorganized_Dataset/O2/graph_dir_70' #"E:\\iCallds"
+    numgraph = 326
     #numgraph = 6431
     revedge = True
     calledges = True

@@ -9,7 +9,7 @@ import torchmetrics
 # from torchmetrics.classification import BinaryRecall
 from torch import tensor
 
-import iCallds2, random
+import iCallds7, random
 
 import dgl.nn as dglnn
 
@@ -64,6 +64,9 @@ class RGCN(nn.Module):
             rel[1]: dglnn.GraphConv(hid_feats, hid_feats)
             for rel in rel_names}, aggregate='sum')
         self.conv3 = dglnn.HeteroGraphConv({
+            rel[1]: dglnn.GraphConv(hid_feats, hid_feats)
+            for rel in rel_names}, aggregate='sum')
+        self.conv4 = dglnn.HeteroGraphConv({
             rel[1]: dglnn.GraphConv(hid_feats, out_feats)
             for rel in rel_names}, aggregate='sum')
 
@@ -76,6 +79,9 @@ class RGCN(nn.Module):
         h = {k: F.relu(v) for k, v in h.items()}
         h = {k: F.dropout(v, p=self.dropout, training=self.training) for k, v in h.items()}
         h = self.conv3(graph, h)
+        h = {k: F.relu(v) for k, v in h.items()}
+        h = {k: F.dropout(v, p=self.dropout, training=self.training) for k, v in h.items()}
+        h = self.conv4(graph, h)
         return h
 
 class Model(nn.Module):
@@ -89,7 +95,7 @@ class Model(nn.Module):
         return h #self.pred(h, qlist)
 
 def init_dataset(Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe = False):
-    dataset = iCallds2.iCallds2(Revedges=Revedges, Calledges=Calledges, Laplacian_pe=Laplacian_pe,
+    dataset = iCallds7.iCallds2(Revedges=Revedges, Calledges=Calledges, Laplacian_pe=Laplacian_pe,
                  Adddata = Adddata, Addfunc = Addfunc, DataRefedgs = DataRefedgs, CodeRefedgs = CodeRefedgs)
 
     # rev -> reverse
@@ -132,13 +138,13 @@ def get_one_graph_bak(dataset, i, Adddata = True, Addfunc = True, Laplacian_pe=F
     g = g.to(device)
     if Adddata:
         if Addfunc:
-            print(f'{i} Code: {g.num_nodes("code")}, Data: {g.num_nodes("data")}, Edges: {g.num_edges()}, GT: {glabels["GT_edges"].shape[1]}')
+            #print(f'{i} Code: {g.num_nodes("code")}, Data: {g.num_nodes("data")}, Edges: {g.num_edges()}, GT: {glabels["GT_edges"].shape[1]}')
             node_features = {'code': g.nodes['code'].data['feat'].view(g.nodes['code'].data['feat'].shape[0],-1).float(),
                              'data': g.nodes['data'].data['feat'].view(g.nodes['data'].data['feat'].shape[0],-1).float(),
                              'func': th.zeros(g.num_nodes("func")).view(-1,1).float().to(device)}
         else:
             #g = g.node_type_subgraph(['code', 'data'])
-            print(f'{i} Code: {g.num_nodes("code")}, Data: {g.num_nodes("data")}, Edges: {g.num_edges()}, GT: {glabels["GT_edges"].shape[1]}')
+            #print(f'{i} Code: {g.num_nodes("code")}, Data: {g.num_nodes("data")}, Edges: {g.num_edges()}, GT: {glabels["GT_edges"].shape[1]}')
             node_features = {
                 'code': g.nodes['code'].data['feat'].view(g.nodes['code'].data['feat'].shape[0], -1).float(),
                 'data': g.nodes['data'].data['feat'].view(g.nodes['data'].data['feat'].shape[0], -1).float()}
@@ -163,12 +169,12 @@ def get_one_graph(dataset, i, Adddata = True, Addfunc = True, Laplacian_pe=False
     g, glabels = dataset[i]
     g = g.to(device)
     if Adddata:
-        print(f'{i} Code: {g.num_nodes("code")}, Data: {g.num_nodes("data")}, Edges: {g.num_edges()}, GT: {glabels["GT_edges"].shape[1]}')
+        #print(f'{i} Code: {g.num_nodes("code")}, Data: {g.num_nodes("data")}, Edges: {g.num_edges()}, GT: {glabels["GT_edges"].shape[1]}')
         node_features = {
             'code': g.nodes['code'].data['feat'].view(g.nodes['code'].data['feat'].shape[0], -1).float(),
             'data': g.nodes['data'].data['feat'].view(g.nodes['data'].data['feat'].shape[0], -1).float()}
     else:
-        print(f'{i} Code: {g.num_nodes("code")}, Edges: {g.num_edges()}, GT: {glabels["GT_edges"].shape[1]}')
+        #print(f'{i} Code: {g.num_nodes("code")}, Edges: {g.num_edges()}, GT: {glabels["GT_edges"].shape[1]}')
         node_features = {
             'code': g.nodes['code'].data['feat'].view(g.nodes['code'].data['feat'].shape[0], -1).float()}
     if Addfunc:
@@ -181,12 +187,14 @@ def get_one_graph(dataset, i, Adddata = True, Addfunc = True, Laplacian_pe=False
 skips = []
 
 # 处理开关
-def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/model/result/all', Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False):
+def exp_all(epochs = 6, hidden_features = 128, inslen = 0, savePATH = '/home/isec/model/result/all', Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False):
+    if not os.path.exists(savePATH):
+        os.makedirs(savePATH)
     dataset, rel_names = init_dataset(Revedges=Revedges, Adddata=Adddata, Addfunc=Addfunc, DataRefedgs = DataRefedgs, Calledges = Calledges, CodeRefedgs = CodeRefedgs, Laplacian_pe=Laplacian_pe)
     pe = 0
     if Laplacian_pe:
         pe = 2
-    in_features = {'code':70*128+2+pe, 'data': 1+pe, 'func': 1+int(pe/2)}
+    in_features = {'code':inslen*128+2+pe, 'data': 1+pe, 'func': 1+int(pe/2)}
     if not Adddata:
         in_features.pop('data')
     if not Addfunc:
@@ -235,14 +243,13 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/model/resu
     if Laplacian_pe:
         randomlist = []
         for i in range(dataset.__len__()):
-        # for i in range(945,999):
-            # if i == 972 or i == 964:
-            #     continue
+            if i in skips:
+                continue
             graphfile = os.path.join(dataset.directory, str(i) + '.graphpe')
             if os.path.exists(graphfile) or os.path.getsize(graphfile[:-2])<70000000:
                 randomlist.append(i)
         tmp = randomlist.__len__()
-        print(f'data num = {tmp}')
+        #print(f'data num = {tmp}')
         validlist = randomlist[int(tmp*0.9):tmp]
         randomlist = randomlist[:int(tmp*0.9)]
     else:
@@ -255,7 +262,7 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/model/resu
     # 迭代次数的循环 测试epoch这么多次数
     for epoch in range(epochs):
         random.shuffle(randomlist)
-        print(randomlist)
+        #print(randomlist)
         for i in range(len(randomlist)):
             num += 1
             g, glabels, node_features = get_one_graph(dataset=dataset, i=randomlist[i], Adddata = Adddata, Addfunc = Addfunc, Laplacian_pe=Laplacian_pe)
@@ -273,8 +280,6 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/model/resu
             loss.backward()
             opt.step()
             timep.append(time.time())
-            print(f'Total time: {timep[-1]-timep[0]:.2f}, time: {timep[-1]- timep[-2]:.2f}')
-            print(f'{epoch}: {i} ({i/(trains[1]):.2%}): {loss.item()}')
             pos_loss = None
             neg_loss = None
             loss = None
@@ -320,6 +325,28 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/model/resu
                 recall.append(recall_tensor.item())
                 if bestf1 <f1[-1]:
                     bestf1 = f1[-1]
+                    # preds = []
+                    # targets = []
+                    # model.eval()
+                    # predictor.eval()
+                    # for i in validlist:#range(valids[0], valids[1]):
+                    #     if i in skips:
+                    #         continue
+                    #     g, glabels, node_features = get_one_graph(dataset=dataset, i=i, Adddata = Adddata, Addfunc = Addfunc, Laplacian_pe=Laplacian_pe)
+                    #     pred = model(g, node_features)
+                    #     edge = glabels['GT_edges'] # eg: 12 代表12之间存在一个indrect call 是一个list
+                    #     # 真值有两部分， 哪两种节点是存在indirect flow  哪两种节点是不存在indirect flow
+                    #     # call linkpredictor
+                    #     pos_out = predictor(th.cat((pred['code'][edge[0]], pred['code'][edge[1]]),
+                    #                             dim=1))
+                    #     edge = glabels['GT_F_edges']
+                    #     neg_out = predictor(th.cat((pred['code'][edge[0]], pred['code'][edge[1]]),
+                    #                             dim=1))
+                    #     preds+=pos_out.tolist()
+                    #     preds+=neg_out.tolist()
+                    #     targets+=[[1]]*pos_out.shape[0]
+                    #     targets+=[[0]]*neg_out.shape[0]
+                    # print(metric(th.tensor(preds), th.tensor(targets)).item())
                     th.save(model.state_dict(), os.path.join(savePATH, 'model.checkpoint'))
                     th.save(predictor.state_dict(), os.path.join(savePATH, 'predictor.checkpoint'))
                     with open(os.path.join(savePATH, 'bestf1.txt'), 'w') as f:
@@ -327,11 +354,11 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/model/resu
                 with open(os.path.join(savePATH, 'f1s.txt'), 'w') as f:
                     for i in range(len(f1)):
                         f.write(str(f1[i])+' '+str(precision[i])+' '+str(recall[i])+' '+str(auroc[i])+' '+'\n')
-                print(f"Test time: {time.time()-timetest:.2f} F1: {f1[-1]:.4f} BestF1: {bestf1:.4f}")
                 model.train()
                 predictor.train()
 
-if __name__ == "__main__":
+#if __name__ == "__main__":
+def main():
     epochs = 10
     # 图过于大
     # skips = [517, 3002, 2260, 2263, 2267, 2264, 2508, 2348, 3732,
@@ -340,23 +367,28 @@ if __name__ == "__main__":
     #          4717, 5988,
     #          5151,
     #          ]
+    # skip = [1362]
     hidden_features = 512
-
+    inslen = 60
     device = th.device("cuda" if th.cuda.is_available() else "cpu")
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/model/result/allpe',
+    savedir = "/home/isec/test/model" + "/result_l4" +"_" + str(inslen)
+    exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen,  savePATH = savedir + '/allpe',
             Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=True)
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/model/result/alloff',
-            Revedges = False, Adddata = False, Addfunc = False, DataRefedgs = False, Calledges = False, CodeRefedgs = False, Laplacian_pe=False)
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/model/result/allafter',
-            Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False)
-'''
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\allnocall',
-            Revedges = True, Adddata = True, Addfunc = False, DataRefedgs = True, Calledges = False, CodeRefedgs = True)
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\allnorefdata',
-            Revedges = True, Adddata = True, Addfunc = False, DataRefedgs = False, Calledges = True, CodeRefedgs = True)
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\allnorefcode',
-            Revedges = True, Adddata = True, Addfunc = False, DataRefedgs = True, Calledges = True, CodeRefedgs = False)
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\allnodata',
-            Revedges = True, Adddata = False, Addfunc = False, DataRefedgs = True, Calledges = True, CodeRefedgs = True)
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\all',
-            Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True)'''
+    # exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen,  savePATH = savedir + '/alloff',
+    #         Revedges = False, Adddata = False, Addfunc = False, DataRefedgs = False, Calledges = False, CodeRefedgs = False, Laplacian_pe=False)
+    # exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen,savePATH = savedir + '/revedges',
+    #         Revedges = True, Adddata = False, Addfunc = False, DataRefedgs = False, Calledges = False, CodeRefedgs = False, Laplacian_pe=False)
+    # exp_all(epochs = epochs, hidden_features=hidden_features, inslen=inslen, savePATH = savedir + '/adddata',
+    #         Revedges = False, Adddata = True, Addfunc = False, DataRefedgs = True, Calledges = False, CodeRefedgs = False, Laplacian_pe=False)
+    # exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen, savePATH = savedir + '/addfunc',
+    #         Revedges = False, Adddata = False, Addfunc = True, DataRefedgs = False, Calledges = False, CodeRefedgs = False, Laplacian_pe=False)
+    # exp_all(epochs = epochs, hidden_features=hidden_features,inslen = inslen, savePATH = savedir + '/calledges',
+    #         Revedges = False, Adddata = False, Addfunc = False, DataRefedgs = False, Calledges = True, CodeRefedgs = False, Laplacian_pe=False)
+    # exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen, savePATH = savedir + '/codeRefedgs',
+    #         Revedges = False, Adddata = False, Addfunc = False, DataRefedgs = False, Calledges = False, CodeRefedgs = True, Laplacian_pe=False)
+    # exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen, savePATH = savedir + '/allafter',
+    #         Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False)
+    # exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen,  savePATH = savedir + '/dataedgecoderef',
+    #         Revedges = False, Adddata = True, Addfunc = False, DataRefedgs = True, Calledges = False, CodeRefedgs = True, Laplacian_pe=False)
+    # exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen,  savePATH = savedir + '/pe',
+    #         Revedges = False, Adddata = False, Addfunc = False, DataRefedgs = False, Calledges = False, CodeRefedgs = False, Laplacian_pe=True)

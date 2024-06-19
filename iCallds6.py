@@ -7,9 +7,9 @@ from dgl.data import DGLDataset
 
 
 class iCallds2(DGLDataset):
-    # directory = '/home/isec/Documents/experiment_6/graph_dir_70' #"E:\\iCallds"
-    directory = '/home/isec/Documents/differentopdata/Reorganized_Dataset/O0/graph_dir_70' #"E:\\iCallds"
-    numgraph = 348
+    directory = '/home/isec/Documents/experiment_6/graph_dir_60' #"E:\\iCallds"
+    # directory = '/home/isec/Documents/differentopdata/Reorganized_Dataset/total_graph_random' #"E:\\iCallds"
+    numgraph = 503
     #numgraph = 6431
     revedge = True
     calledges = True
@@ -64,7 +64,7 @@ class iCallds2(DGLDataset):
                         (pe[nowi:nowi + glist[0].num_nodes(i)], glist[0].nodes[i].data['feat']), dim=1)
                     nowi += glist[0].num_nodes(i)
 
-                #dgl.data.utils.save_graphs(graphfile, glist, glabel)
+                dgl.data.utils.save_graphs(graphfile, glist, glabel)
                 if self.onlySave:
                     return glist, glabel
 
